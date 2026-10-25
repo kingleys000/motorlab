@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MotorLab 3D — Motor DC 24 V</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="viewer"></div>
+
+  <aside id="panel">
+    <h1>MotorLab <span>3D</span></h1>
+    <p class="subtitle">Motor DC 24 V · Escobillas · 12 ranuras</p>
+
+    <section>
+      <h2>Animación</h2>
+      <label class="slider-label" for="rpm">
+        Velocidad <output id="rpm-value">600 RPM</output>
+      </label>
+      <input type="range" id="rpm" min="0" max="3000" step="50" value="600">
+      <button id="spin" class="primary">Detener</button>
+    </section>
+
+    <section>
+      <h2>Vista</h2>
+      <label class="toggle">
+        <input type="checkbox" id="cutaway">
+        Vista de corte (interior)
+      </label>
+      <label class="slider-label" for="explode">
+        Vista explotada <output id="explode-value">0%</output>
+      </label>
+      <input type="range" id="explode" min="0" max="100" step="1" value="0">
+      <label class="toggle">
+        <input type="checkbox" id="labels" checked>
+        Etiquetas de componentes
+      </label>
+      <button id="reset-camera">Restablecer cámara</button>
+    </section>
+
+    <section>
+      <h2>Componentes</h2>
+      <ul id="legend">
+        <li><i style="--c:#8b939c"></i>Carcasa y aletas (acero)</li>
+        <li><i style="--c:#c8ccd2"></i>Tapas y rodamientos (aluminio)</li>
+        <li><i style="--c:#3a3d42"></i>Imanes del estator (ferrita)</li>
+        <li><i style="--c:#b87333"></i>Bobinas y conmutador (cobre)</li>
+        <li><i style="--c:#e3e6ea"></i>Eje (acero pulido)</li>
+        <li><i style="--c:#26282c"></i>Escobillas (grafito)</li>
+      </ul>
+    </section>
+
+    <p class="hint">Arrastra para rotar · Rueda para zoom · Clic derecho para desplazar</p>
+  </aside>
+
+  <div id="loading">Cargando modelo 3D…</div>
+  <script type="module" src="main.js"></script>
+</body>
+</html>
