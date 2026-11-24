@@ -64,7 +64,12 @@ class ThemeManager(QObject):
         palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor(self.resolve('#8a9bb0')))
         app.setPalette(palette)
         # Una sustitución por color evita reemplazos en cadena entre ambas paletas.
-        app.setStyleSheet(re.sub(r'#[0-9a-fA-F]{6}', lambda match: self.resolve(match[0]), self.dark_stylesheet))
+        stylesheet = re.sub(r'#[0-9a-fA-F]{6}', lambda match: self.resolve(match[0]), self.dark_stylesheet)
+        icons = Path(__file__).resolve().parent / 'icons'
+        for direction in ('up', 'down'):
+            stylesheet = stylesheet.replace(f'__ARROW_{direction.upper()}__',
+                                            (icons / f'chevron-{direction}-{self.mode}.svg').as_posix())
+        app.setStyleSheet(stylesheet)
 
     def set_mode(self, mode, persist=True):
         if mode not in ('dark', 'light'):

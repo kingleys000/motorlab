@@ -136,3 +136,15 @@ button.primary:hover { background: #b56a28; }
   background: #e08840;
   flex-shrink: 0;
 }
+
+body.light #panel { background: rgba(250,252,254,.96); color: #172c3f; border-color: #b4c5d4; }
+body.light button { background: #e6edf4; color: #172c3f; border-color: #b4c5d4; }
+body.light #legend li, body.light h2, body.light .subtitle { color: #506579; }
+body.light .label3d { background: rgba(250,252,254,.94); color: #172c3f; border-color: #8799aa; }
+#selection { color: #e6b535; font-size: 12px; font-weight: bold; }
+body.light #selection { color: #795400; }
+@media (max-width: 800px) {
+  #panel { width: 190px; padding: 12px; }
+  h1 { font-size: 20px; }
+  .subtitle, #legend, .hint { font-size: 10px; }
+}

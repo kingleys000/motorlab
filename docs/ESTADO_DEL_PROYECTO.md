@@ -1,4 +1,4 @@
-# Estado del proyecto — 25 de octubre de 2026
+# Estado del proyecto — 28 de octubre de 2026
 
 Ubicación: `/home/jd/Documents/Proyecto`.
 
@@ -23,13 +23,16 @@ enunciado específico de la asignatura ni las ecuaciones de un sistema existente
 - Ejecución nativa con Qt en Wayland; pantalla del equipo: 1920 × 1080.
 - Dependencias del entorno virtual sin incompatibilidades reportadas por pip.
 
-## Conexión pendiente del usuario
+## Conexión con InfluxDB verificada (28 de octubre)
 
-InfluxDB 3 Core 3.11.5 está activo en el puerto 8181 y exige autenticación.
-No se proporcionó un token. Los envíos y consultas se comprobaron contra un
-servidor HTTP controlado; aún no se ha verificado una escritura autenticada en
-la instancia real. Introducir el token desde “Conectar InfluxDB” permite enviar
-las muestras pendientes.
+InfluxDB 3 Core 3.12.1 activo en el puerto 8181 con autenticación habilitada.
+Se generó un token de administrador con `influxdb3 create token --admin` y se
+guardó en `.env` (permisos 0600); la base `modelado_simulacion` se creó en el
+servidor. La escritura autenticada se comprobó de extremo a extremo con el
+propio `SyncWorker` de la aplicación: 20/20 muestras enviadas y leídas de
+vuelta con `query_sql`. Las 6 522 muestras pendientes de la base local se
+sincronizaron después (6 542 puntos en total en InfluxDB). El token anterior
+de `.env` era inválido (401) y fue reemplazado.
 
 Los datos originales en `~.influxdb/` y el paquete `paho-mqtt` del entorno virtual
 se conservaron. MQTT no se utiliza en esta primera versión.

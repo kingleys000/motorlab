@@ -6,6 +6,7 @@ from pathlib import Path
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 
 from PySide6.QtWidgets import QApplication
 from motorlab.controller import Controller
@@ -97,6 +98,50 @@ class InterfaceTests(unittest.TestCase):
             dashboard.deleteLater()
             self.app.processEvents()
 
+
+    def test_experimental_workflow_without_network(self):
+        from motorlab.experiments import read_experiment
+        from PySide6.QtWidgets import QMessageBox
+        sync = SyncWorker(self.store, Settings(enabled=False))
+        dashboard = DashboardWindow(self.controller, sync)
+        dashboard.plot_timer.stop()
+        try:
+            examples = Path(__file__).resolve().parents[1] / 'examples'
+            dashboard.experiment = read_experiment(examples / 'ajuste_sintetico.csv')
+            dashboard.validation_experiment = read_experiment(examples / 'validacion_sintetica.csv')
+            with patch('motorlab.ui.QMessageBox.question', return_value=QMessageBox.StandardButton.Yes):
+                dashboard.calibrate_experiment()
+            self.assertIn('RMSE', dashboard.experiment_text.toPlainText())
+            with patch('motorlab.ui.QInputDialog.getDouble', return_value=(2., True)):
+                dashboard.diagnose_experiment()
+            self.assertIn('current', [item['id'] for item in dashboard.evidence])
+            self.assertEqual(len(self.store.sessions()), 1)
+        finally:
+            dashboard.deleteLater()
+            self.app.processEvents()
+
+    def test_new_experiment_invalidates_evidence_and_inflight_advice(self):
+        from concurrent.futures import Future
+        sync = SyncWorker(self.store, Settings(enabled=False))
+        dashboard = DashboardWindow(self.controller, sync)
+        dashboard.plot_timer.stop()
+        future = Future()
+        try:
+            dashboard.evidence = [{'id': 'current'}]
+            with patch('motorlab.ai.advise_async', return_value=future), patch('motorlab.ui.QTimer.singleShot'):
+                dashboard.ask_ai()
+            rows = [{'origin': 'synthetic', 'sensor_location': 'bobinado'}]
+            with patch.object(dashboard, '_import_rows', return_value=rows):
+                dashboard.import_validation()
+            self.assertEqual(dashboard.evidence, [])
+            future.set_result('Respuesta anterior current')
+            dashboard._poll_ai()
+            self.assertNotIn('Respuesta anterior current', dashboard.experiment_text.toPlainText())
+            self.assertIn('se descartó', dashboard.experiment_text.toPlainText())
+            self.assertIsNone(dashboard.ai_future)
+        finally:
+            dashboard.deleteLater()
+            self.app.processEvents()
 
     def test_theme_changes_both_windows_and_survives_restart(self):
         c = self.controller

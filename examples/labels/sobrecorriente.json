@@ -1,0 +1,10 @@
+[
+  {
+    "id": "overcurrent-current-1",
+    "signal": "current",
+    "start_time": 3.0,
+    "end_time": 6.0,
+    "origin": "synthetic",
+    "expect_alert": true
+  }
+]

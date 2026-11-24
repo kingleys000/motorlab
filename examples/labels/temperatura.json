@@ -1,0 +1,10 @@
+[
+  {
+    "id": "temperature-temperature-1",
+    "signal": "temperature",
+    "start_time": 3.0,
+    "end_time": 6.0,
+    "origin": "synthetic",
+    "expect_alert": true
+  }
+]

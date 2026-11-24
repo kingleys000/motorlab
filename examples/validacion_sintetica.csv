@@ -1,0 +1,4 @@
+acquisition_time,voltage,current,rpm,temperature,sensor_type,sensor_location,origin
+0,5.7,1.5,334.225380493,25,sintetico,bobinado,synthetic
+1,10.1,2.5,620.704278058,25,sintetico,bobinado,synthetic
+2,11.7,4.5,429.718346348,25,sintetico,bobinado,synthetic

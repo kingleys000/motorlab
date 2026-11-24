@@ -1,0 +1,10 @@
+[
+  {
+    "id": "brief_peak-current-1",
+    "signal": "current",
+    "start_time": 3.0,
+    "end_time": 3.5,
+    "origin": "synthetic",
+    "expect_alert": false
+  }
+]

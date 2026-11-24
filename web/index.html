@@ -8,8 +8,8 @@
   <script type="importmap">
     {
       "imports": {
-        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+        "three": "./vendor/three/build/three.module.js",
+        "three/addons/": "./vendor/three/examples/jsm/"
       }
     }
   </script>
@@ -26,7 +26,7 @@
       <label class="slider-label" for="rpm">
         Velocidad <output id="rpm-value">600 RPM</output>
       </label>
-      <input type="range" id="rpm" min="0" max="3000" step="50" value="600">
+      <input type="range" id="rpm" min="-100000" max="100000" step="1" value="600">
       <button id="spin" class="primary">Detener</button>
     </section>
 
@@ -47,6 +47,7 @@
       <button id="reset-camera">Restablecer cámara</button>
     </section>
 
+    <p id="selection">○ Sin componente seleccionado</p>
     <section>
       <h2>Componentes</h2>
       <ul id="legend">
@@ -63,6 +64,13 @@
   </aside>
 
   <div id="loading">Cargando modelo 3D…</div>
+  <script>
+    window.addEventListener('error', function () {
+      const loading = document.getElementById('loading');
+      if (loading) loading.textContent = 'No se pudo iniciar WebGL. Las evidencias siguen disponibles en la aplicación.';
+    });
+  </script>
+  <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
   <script type="module" src="main.js"></script>
 </body>
 </html>

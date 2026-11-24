@@ -1,0 +1,10 @@
+[
+  {
+    "id": "voltage_residual-voltage_residual-1",
+    "signal": "voltage_residual",
+    "start_time": 3.0,
+    "end_time": 6.0,
+    "origin": "synthetic",
+    "expect_alert": true
+  }
+]

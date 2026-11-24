@@ -8,7 +8,7 @@ from PySide6.QtGui import QAction, QActionGroup, QFont, QKeySequence
 from PySide6.QtWidgets import (
     QApplication, QCheckBox, QComboBox, QDialog, QDialogButtonBox,
     QDoubleSpinBox, QFileDialog, QFormLayout, QFrame, QGridLayout,
-    QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMessageBox, QPushButton,
+    QHBoxLayout, QInputDialog, QLabel, QLineEdit, QMainWindow, QMessageBox, QPushButton,
     QScrollArea, QSizePolicy, QSplitter, QTabWidget, QTextEdit, QVBoxLayout, QWidget,
 )
 
@@ -32,8 +32,19 @@ QPushButton:hover { background: #243e4b; border-color: #4ee2cd; }
 QPushButton:pressed { background: #304c55; }
 QPushButton#primary { color: #071d1b; background: #4ee2cd; border: 1px solid #4ee2cd; font-weight: bold; }
 QPushButton#primary:hover { background: #8cf7e6; }
-QComboBox, QLineEdit, QDoubleSpinBox { background: #09121c; border: 1px solid #304657; border-radius: 5px; padding: 8px; min-height: 16px; selection-background-color: #235d58; }
-QComboBox QAbstractItemView { background: #132131; selection-background-color: #235d58; }
+QComboBox, QLineEdit, QAbstractSpinBox { background: #09121c; border: 1px solid #304657; border-radius: 6px; padding: 8px; min-height: 20px; selection-background-color: #235d58; }
+QComboBox, QAbstractSpinBox { padding-right: 36px; }
+QComboBox:hover, QAbstractSpinBox:hover, QLineEdit:hover { border-color: #4ee2cd; }
+QComboBox:focus, QAbstractSpinBox:focus, QLineEdit:focus { border: 1px solid #4ee2cd; }
+QComboBox::drop-down { subcontrol-origin: border; subcontrol-position: top right; width: 30px; border-left: 1px solid #304657; border-top-right-radius: 5px; border-bottom-right-radius: 5px; background: #182939; }
+QComboBox::drop-down:hover, QAbstractSpinBox::up-button:hover, QAbstractSpinBox::down-button:hover { background: #243e4b; }
+QComboBox::down-arrow { image: url(__ARROW_DOWN__); width: 14px; height: 14px; }
+QComboBox QAbstractItemView { background: #132131; color: #e4edf7; selection-background-color: #235d58; selection-color: #e4edf7; border: 1px solid #304657; padding: 4px; outline: none; }
+QAbstractSpinBox::up-button, QAbstractSpinBox::down-button { subcontrol-origin: border; width: 30px; border-left: 1px solid #304657; background: #182939; }
+QAbstractSpinBox::up-button { subcontrol-position: top right; border-top-right-radius: 5px; }
+QAbstractSpinBox::down-button { subcontrol-position: bottom right; border-bottom-right-radius: 5px; }
+QAbstractSpinBox::up-arrow { image: url(__ARROW_UP__); width: 12px; height: 12px; }
+QAbstractSpinBox::down-arrow { image: url(__ARROW_DOWN__); width: 12px; height: 12px; }
 QTextEdit { background: #09121c; border: 1px solid #243444; border-radius: 5px; padding: 6px; }
 QTabWidget::pane { border: 1px solid #243444; }
 QTabBar::tab { background: #142130; padding: 10px 18px; }
@@ -426,6 +437,33 @@ class DashboardWindow(BaseWindow):
         self.query_text.setPlainText('Configura la conexión y ejecuta una simulación para consultar sus datos.\n\nEl historial del selector superior procede del registro local.')
         dblayout.addWidget(self.query_text)
         self.tabs.addTab(dbpage, 'Datos en InfluxDB')
+        experiment_page = QWidget()
+        experiment_layout = QVBoxLayout(experiment_page)
+        from .profiles import LEGACY
+        self.profile = LEGACY
+        self.calibration = None
+        self.validation_experiment = []
+        self.evidence = []
+        self.ai_future = None
+        self.evidence_revision = 0
+        self.ai_revision = None
+        self.profile_label = label('Perfil legacy · didáctico · motor real sin identificar ni calibrar', 'muted')
+        experiment_layout.addWidget(self.profile_label)
+        experiment_layout.addWidget(button('Cargar perfil JSON', self.load_experiment_profile))
+        experiment_layout.addWidget(button('Importar ensayo de ajuste CSV', self.import_experiment))
+        experiment_layout.addWidget(button('Importar ensayo de validación CSV', self.import_validation))
+        experiment_layout.addWidget(button('Calibrar y comparar (régimen estacionario)', self.calibrate_experiment))
+        experiment_layout.addWidget(button('Diagnosticar ensayo con límite de corriente', self.diagnose_experiment))
+        self.experiment_text = QTextEdit()
+        self.experiment_text.setReadOnly(True)
+        self.experiment_text.setPlainText('Pendiente de datos experimentales. Consulta docs/CONTRATOS_GEMELO.md para el formato CSV.')
+        experiment_layout.addWidget(self.experiment_text)
+        self.tabs.addTab(experiment_page, 'Gemelo experimental')
+        self.experiment = []
+        from .diagnostic_view import DiagnosticView
+        self.diagnostic_view = DiagnosticView(self)
+        self.tabs.addTab(self.diagnostic_view, 'Motor 3D y diagnóstico')
+        self.tabs.currentChanged.connect(self._activate_diagnostic_view)
         self.bottom = label('EN VIVO · rueda para zoom · arrastra para desplazar · doble clic para reencuadrar', 'muted')
         layout.addWidget(self.bottom)
         self.c.sample.connect(self.on_sample)
@@ -443,6 +481,8 @@ class DashboardWindow(BaseWindow):
 
     def apply_theme(self):
         super().apply_theme()
+        if hasattr(self, 'diagnostic_view'):
+            self.diagnostic_view.set_theme(self.theme.mode)
         for key, plot in self.plots.items():
             title, unit, color = self.plot_metadata[key]
             plot.setBackground(themed(BG))
@@ -454,6 +494,10 @@ class DashboardWindow(BaseWindow):
                 axis.setPen(pg.mkPen(themed(MUTED)))
                 axis.setTextPen(pg.mkPen(themed(MUTED)))
             self.curves[key].setPen(pg.mkPen(themed(color), width=2))
+
+    def _activate_diagnostic_view(self, index):
+        if self.tabs.widget(index) is self.diagnostic_view:
+            self.diagnostic_view.init_viewer()
 
     def log_event(self, text):
         self.log.append(f'[{datetime.now():%H:%M:%S}]  t={self.c.motor.time:.2f} s  ·  {text}')
@@ -528,6 +572,118 @@ class DashboardWindow(BaseWindow):
                 QMessageBox.information(self, 'Exportación', f'Sesión exportada a:\n{name}')
             except OSError as exc:
                 QMessageBox.warning(self, 'No se pudo exportar', str(exc))
+
+    def _import_rows(self):
+        from .experiments import read_experiment
+        name, _ = QFileDialog.getOpenFileName(self, 'Importar ensayo', '', 'CSV (*.csv)')
+        if not name:
+            return None
+        try:
+            return read_experiment(name)
+        except (OSError, ValueError) as exc:
+            QMessageBox.warning(self, 'Ensayo inválido', str(exc))
+            return None
+
+    def import_experiment(self):
+        rows = self._import_rows()
+        if rows is not None:
+            self.experiment = rows
+            self.calibration = None
+            self.invalidate_evidence()
+            self.experiment_text.setPlainText(f'Ajuste: {len(rows)} muestras · origen {rows[0]["origin"]} · sensor {rows[0]["sensor_location"]}.')
+
+    def import_validation(self):
+        rows = self._import_rows()
+        if rows is not None:
+            self.validation_experiment = rows
+            self.calibration = None
+            self.invalidate_evidence()
+            self.experiment_text.append(f'Validación: {len(rows)} muestras · origen {rows[0]["origin"]}.')
+
+    def load_experiment_profile(self):
+        from .profiles import load_profile
+        name, _ = QFileDialog.getOpenFileName(self, 'Perfil', '', 'JSON (*.json)')
+        if not name:
+            return
+        try:
+            profile = load_profile(name)
+        except (OSError, ValueError) as exc:
+            QMessageBox.warning(self, 'Perfil inválido', str(exc))
+            return
+        self.profile = profile
+        self.calibration = None
+        self.invalidate_evidence()
+        self.profile_label.setText(f'{profile.identity} · {profile.status} · v{profile.version} · {profile.source}')
+
+    def calibrate_experiment(self):
+        from .calibration import calibrate, compare
+        answer = QMessageBox.question(self, 'Supuesto necesario', '¿Ambos ensayos son saludables, independientes y estacionarios, y miden temperatura de bobinado?')
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            result = calibrate(self.experiment, self.validation_experiment, self.profile.parameters, steady_state=True)
+            comparison = compare(self.validation_experiment, result.parameters)
+        except (ValueError, KeyError) as exc:
+            QMessageBox.warning(self, 'No se puede calibrar', str(exc))
+            return
+        self.calibration = result
+        self.invalidate_evidence()
+        lines = [f'Ajuste {result.origin}: R={result.parameters.resistance:.6g} Ω, K={result.parameters.torque_constant:.6g} N·m/A',
+                 f'RMSE tensión: ajuste {result.training_rmse_v:.4g} V; validación independiente {result.validation_rmse_v:.4g} V.',
+                 'Fijos: ' + ', '.join(result.fixed), 'Comparación observada / predicha / residual (V), primeras 20 muestras:']
+        lines += [f"t={r['acquisition_time']:.3f} s: {r['observed_voltage']:.3f} / {r['predicted_voltage']:.3f} / {r['residual_voltage']:.3f}" for r in comparison[:20]]
+        lines.append('Un ajuste no certifica el motor ni su validación experimental.')
+        self.experiment_text.setPlainText('\n'.join(lines))
+
+    def diagnose_experiment(self):
+        from .diagnostics import Detector, Limits
+        if not self.validation_experiment:
+            QMessageBox.warning(self, 'Diagnóstico', 'Importa primero el ensayo de validación.')
+            return
+        value, ok = QInputDialog.getDouble(self, 'Límite explícito', 'Corriente máxima (A):', 1, 0.000001, 100000, 3)
+        if not ok:
+            return
+        self.invalidate_evidence()
+        detector = Detector(Limits(current_max=value))
+        events = []
+        for row in self.validation_experiment:
+            for evidence in detector.update(row):
+                if evidence['id'] not in {x['id'] for x in events}:
+                    events.append(evidence)
+        self.evidence = events
+        self.experiment_text.append('Diagnóstico (persistencia 1 s, límite definido por usuario): ' + (str(events) if events else 'sin alertas persistentes.'))
+
+    def invalidate_evidence(self):
+        """Evita reutilizar alertas o respuestas de un análisis anterior."""
+        self.evidence = []
+        self.evidence_revision += 1
+        if hasattr(self, 'diagnostic_view'):
+            self.diagnostic_view.invalidate()
+
+    def ask_ai(self):
+        from .ai import AIConfig, advise_async
+        if not self.evidence:
+            QMessageBox.information(self, 'Asesor IA', 'No hay evidencias de alerta para enviar.')
+            return
+        if self.ai_future is not None:
+            return
+        self.ai_future = advise_async(AIConfig.from_env(), self.evidence)
+        self.ai_revision = self.evidence_revision
+        self.experiment_text.append('Consultando asesor IA en segundo plano…')
+        QTimer.singleShot(100, self._poll_ai)
+
+    def _poll_ai(self):
+        if not self.ai_future.done():
+            QTimer.singleShot(100, self._poll_ai)
+            return
+        future, self.ai_future = self.ai_future, None
+        if self.ai_revision != self.evidence_revision:
+            self.experiment_text.append('La respuesta del asesor se descartó: los datos del análisis cambiaron.')
+            return
+        try:
+            self.experiment_text.append('Asesor IA (texto no verificado): ' + future.result())
+        except Exception:
+            self.experiment_text.append('Asesor IA no disponible o sin configurar. Las alertas siguen activas.')
 
     def query(self):
         self.query_button.setEnabled(False)

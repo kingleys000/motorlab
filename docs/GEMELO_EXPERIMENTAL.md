@@ -1,0 +1,17 @@
+# Gemelo experimental: prototipo
+
+El motor integrado es didáctico. No se ha identificado ni validado un motor comercial. No se han usado datos reales. Los archivos de `examples/` son sintéticos y no prueban el comportamiento de un motor físico.
+
+En «Gemelo experimental», importe por separado los ensayos de ajuste y validación y seleccione calibración. Confirme el supuesto únicamente si ambos ensayos independientes son saludables, estacionarios y contienen temperatura de bobinado. El ajuste estima R a 25 °C y K a partir de V = R(25)·(1 + α(T−25))·I + K·ω. Se necesita variación suficiente de corriente y velocidad; se rechaza una matriz mal condicionada. Se reporta RMSE de tensión de ambos ensayos y comparación de validación. El modelo supone derivada de corriente despreciable y tensión de armadura; temperatura de carcasa no sirve como temperatura de bobinado. No ajusta L, inercia, fricción, capacidad térmica ni coeficiente térmico. Un RMSE bajo no constituye por sí solo validación física. Ensayos con otras condiciones requieren un método diferente.
+
+CSV UTF-8: `acquisition_time` (segundos relativos crecientes), `voltage` (V), `current` (A), `rpm` (revoluciones/min), `temperature` (°C), `sensor_type`, `sensor_location`, `origin` (`measured` o `synthetic`); `load` (N·m) y `ambient` (°C) son opcionales. La aplicación no convierte unidades ni supone carga desconocida. No se almacena una hora de recepción para archivos importados; el tiempo del CSV es de adquisición. Las observaciones no son predicciones: la comparación muestra ambas explícitamente. La simulación heredada usa su propio reloj.
+
+Para cargar un perfil JSON se requieren `identifier`, `version`, `identity`, `status`, `source` y `parameters` con todos los campos SI de `motorlab.model.Parameters`; estados permitidos: `didactico`, `catalogo`, `calibrado`, `validado`. Cargar una ficha no implica calibración. La selección del perfil se aplica al análisis experimental, no cambia la simulación heredada. El ajuste queda en memoria y no modifica el perfil de referencia.
+
+El diagnóstico disponible usa un límite de corriente introducido por el usuario y persistencia de un segundo, sobre el ensayo importado. El motor determinista también admite límites de temperatura y residual desde Python. Las hipótesis no son certezas; ausencia de una alerta no demuestra ausencia de fallas. No se estima vida útil ni riesgo futuro. Se necesitan límites, sensores, calibración y pruebas específicas del motor real.
+
+Al cambiar un ensayo o perfil, recalibrar o ejecutar un nuevo diagnóstico se invalidan las evidencias anteriores. Si una consulta del asesor termina después de un cambio, su respuesta se descarta.
+
+El asesor es optativo y solo se llama al pulsar su botón, si hay evidencias. Configurar en el entorno `MOTORLAB_AI_PROVIDER`, `MOTORLAB_AI_BASE_URL` (base de API compatible con chat completions), `MOTORLAB_AI_MODEL` y `MOTORLAB_AI_API_KEY`. Se envían las evidencias seleccionadas al proveedor configurado. La respuesta es texto no verificado, no controla equipos y un fallo no bloquea las alertas. El token no se guarda en el proyecto por esta función.
+
+Pendiente: referencia y ficha del motor real, datos independientes y su procedencia, identificación dinámica validada, límites y medición de latencia con fallas reales, persistencia de perfiles y resultados, detección en vivo, previsión condicionada a supuestos y una validación experimental completa. La cola e historial existentes no se migran ni modifican por importar ensayos.

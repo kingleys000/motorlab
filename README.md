@@ -93,6 +93,11 @@ Tabla de InfluxDB: `motor_dc`. Etiquetas: `session`, `motor`. Campos:
 
 ## Cómo estudiar el código
 
+La pestaña «Motor 3D y diagnóstico» permite explorar ensayos sintéticos y consultar
+dos agentes configurables. El recorrido, los límites didácticos y la evaluación
+reproducible se describen en [Diagnóstico IA y 3D](docs/DIAGNOSTICO_IA_3D.md).
+Los agentes se comprobaron con respuestas simuladas y con una consulta real a Google AI Studio; sus respuestas no validan una falla física.
+
 1. `docs/MODELO_Y_GUIA.md`: fenómeno, ecuaciones, unidades y experimentos.
 2. `motorlab/model.py`: ecuaciones e integración numérica, sin interfaz ni base.
 3. `motorlab/controller.py`: reloj, cambios de escenario y muestreo.

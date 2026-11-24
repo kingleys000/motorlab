@@ -59,6 +59,19 @@ class Motor:
         """Un paso de Runge–Kutta de cuarto orden."""
         if not 0 < dt <= 0.00100001:
             raise ValueError('El paso debe estar entre 0 y 0.001 segundos.')
+        # Resuelve la escala eléctrica rápida con subpasos, conservando el reloj externo.
+        resistance = abs(self.resistance(self.temperature))
+        if self.p.inductance <= 0 or self.p.inertia <= 0 or self.p.thermal_capacity <= 0:
+            raise ValueError('Inductancia, inercia y capacidad térmica deben ser positivas.')
+        rate = resistance / self.p.inductance + abs(self.p.torque_constant) / math.sqrt(self.p.inductance * self.p.inertia) + abs(self.p.friction) / self.p.inertia
+        count = max(1, math.ceil(dt * rate / 0.5))
+        if count > 10000:
+            raise ValueError('Parámetros demasiado rígidos para el integrador.')
+        h = dt / count
+        for _ in range(count):
+            self._rk4(h)
+
+    def _rk4(self, dt):
         y = (self.current, self.omega, self.temperature)
         k1 = self.derivative(y)
         k2 = self.derivative(tuple(a + dt * b / 2 for a, b in zip(y, k1)))

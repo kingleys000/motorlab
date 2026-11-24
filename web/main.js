@@ -18,6 +18,11 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.1;
 viewer.appendChild(renderer.domElement);
+renderer.domElement.addEventListener('webglcontextlost', () => {
+  const loading = document.getElementById('loading');
+  loading.classList.remove('hidden');
+  loading.textContent = 'Se perdió WebGL. Las evidencias siguen disponibles en la aplicación.';
+});
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x14161a);
@@ -142,7 +147,9 @@ function buildHousing(cut) {
 }
 
 const housingFull = buildHousing(false);
+housingFull.userData.component = 'carcasa';
 const housingCut = buildHousing(true);
+housingCut.userData.component = 'carcasa';
 housingCut.visible = false;
 motor.add(housingFull, housingCut);
 
@@ -155,9 +162,11 @@ function buildBell(sign) {
   group.add(boss);
   const bearing = torusX(0.17, 0.055, materials.polished);
   bearing.position.x = sign * 0.3;
+  bearing.userData.component = 'rodamientos';
   group.add(bearing);
   const bearingInner = solidCylinderX(0.13, 0.1, materials.lamination);
   bearingInner.position.x = sign * 0.3;
+  bearingInner.userData.component = 'rodamientos';
   group.add(bearingInner);
   for (let i = 0; i < 4; i += 1) {
     const angle = Math.PI / 4 + i * Math.PI / 2;
@@ -175,9 +184,11 @@ motor.add(frontBell, rearBell);
 
 const magnetTop = magnetArc(Math.PI / 2, materials.ferrite);
 const magnetBottom = magnetArc(-Math.PI / 2, materials.ferrite);
+magnetTop.userData.component = magnetBottom.userData.component = 'estator';
 motor.add(magnetTop, magnetBottom);
 
 const rotor = new THREE.Group();
+rotor.userData.component = 'rotor_eje';
 
 const core = solidCylinderX(0.6, 1.6, materials.lamination, 96);
 rotor.add(core);
@@ -191,11 +202,13 @@ for (let i = 0; i < 12; i += 1) {
   const angle = (i / 12) * Math.PI * 2;
   const winding = solidCylinderX(0.085, 1.72, materials.copper, 24);
   winding.position.set(0, Math.sin(angle) * 0.62, Math.cos(angle) * 0.62);
+  winding.userData.component = 'bobinado';
   rotor.add(winding);
 }
 for (const sign of [-1, 1]) {
   const endWinding = torusX(0.52, 0.13, materials.copper);
   endWinding.position.x = sign * 0.88;
+  endWinding.userData.component = 'bobinado';
   rotor.add(endWinding);
 }
 
@@ -208,6 +221,7 @@ for (let i = 0; i < 12; i += 1) {
   geometry.rotateZ(Math.PI / 2);
   const segment = new THREE.Mesh(geometry, materials.copper);
   segment.position.x = -1.32;
+  segment.userData.component = 'conmutador';
   rotor.add(segment);
 }
 motor.add(rotor);
@@ -229,6 +243,7 @@ function buildBrush(sign) {
 
 const brushTop = buildBrush(1);
 const brushBottom = buildBrush(-1);
+brushTop.userData.component = brushBottom.userData.component = 'escobillas';
 motor.add(brushTop, brushBottom);
 
 const terminals = new THREE.Group();
@@ -264,6 +279,12 @@ scene.add(floor);
 
 motor.traverse((object) => {
   if (object.isMesh) {
+    // Cada malla conserva material propio: resaltar una pieza nunca tiñe otra.
+    object.material = object.material.clone();
+    object.userData.baseEmissive = object.material.emissive.clone();
+    let parent = object;
+    while (parent && !parent.userData.component) parent = parent.parent;
+    object.userData.component = parent?.userData.component || 'motor';
     object.castShadow = true;
     object.receiveShadow = true;
   }
@@ -373,7 +394,7 @@ renderer.setAnimationLoop(() => {
   const delta = Math.min(clock.getDelta(), 0.05);
   if (spinning) {
     const rpm = Number(rpmInput.value);
-    const revolutionsPerSecond = 12 * Math.tanh(rpm / 600);
+    const revolutionsPerSecond = rpm / 60;
     rotor.rotation.x += revolutionsPerSecond * Math.PI * 2 * delta;
   }
   controls.update();
@@ -384,3 +405,64 @@ renderer.setAnimationLoop(() => {
     document.getElementById('loading').classList.add('hidden');
   }
 });
+
+
+// Interfaz de mensajes explícita: solo datos visuales, nunca credenciales.
+window.motorlab = {
+  theme(mode) {
+    document.body.classList.toggle('light', mode === 'light');
+    scene.background.set(mode === 'light' ? 0xe8edf2 : 0x14161a);
+    floor.material.color.set(mode === 'light' ? 0xdbe3e9 : 0x1b1e23);
+  },
+  sample(rpm, playing) {
+    rpmInput.value = String(Math.max(-100000, Math.min(100000, Number(rpm) || 0)));
+    rpmValue.textContent = `${Math.round(Number(rpm) || 0)} RPM`;
+    spinning = !!playing;
+    spinButton.textContent = spinning ? 'Detener' : 'Girar';
+  },
+  select(ids) {
+    const chosen = new Set(ids);
+    motor.traverse(object => {
+      if (!object.isMesh) return;
+      const selected = chosen.has('motor') || chosen.has(object.userData.component);
+      object.material.emissive.copy(object.userData.baseEmissive);
+      if (selected) object.material.emissive.set(0x756300);
+    });
+    const selectedObjects = [];
+    motor.traverse(object => { if (object.isMesh && (chosen.has('motor') || chosen.has(object.userData.component))) selectedObjects.push(object); });
+    if (selectedObjects.length) {
+      const bounds = new THREE.Box3();
+      for (const object of selectedObjects) bounds.expandByObject(object);
+      bounds.getCenter(controls.target);
+    }
+    document.getElementById('selection').textContent = ids.length
+      ? '◆ Componente seleccionado: ' + ids.join(', ') : '○ Sin componente seleccionado';
+  },
+  explode() {
+    explodeInput.value = 75; explodeInput.dispatchEvent(new Event('input'));
+    controls.target.set(0.8, 0.1, 0);
+    camera.position.set(7, 4, 8);
+  },
+  reset() {
+    cutawayInput.checked = false; cutawayInput.dispatchEvent(new Event('change'));
+    explodeInput.value = 0; explodeInput.dispatchEvent(new Event('input'));
+    labelsInput.checked = true; labelsInput.dispatchEvent(new Event('change'));
+    resetButton.click(); this.select([]);
+  }
+};
+if (typeof QWebChannel !== 'undefined' && window.qt?.webChannelTransport) {
+  new QWebChannel(qt.webChannelTransport, channel => {
+    const bridge = channel.objects.bridge;
+    bridge.command.connect(message => {
+      try {
+        const command = JSON.parse(message);
+        if (command.action === 'theme') window.motorlab.theme(command.mode);
+        if (command.action === 'sample') window.motorlab.sample(command.rpm, command.playing);
+        if (command.action === 'select') window.motorlab.select(command.components);
+        if (command.action === 'explode') window.motorlab.explode();
+        if (command.action === 'reset') window.motorlab.reset();
+      } catch (error) { console.error('Mensaje de visor inválido'); }
+    });
+    bridge.ready();
+  });
+}
